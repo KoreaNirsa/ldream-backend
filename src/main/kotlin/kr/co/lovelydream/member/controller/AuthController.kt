@@ -32,15 +32,15 @@ class AuthController(
     @PostMapping("/signup")
     fun signup(
         @Valid @RequestBody reqSignupWrapper: ReqSignupWrapper
-    ): ResponseEntity<ResultVO<Nothing>> {
-        authService.signup(reqSignupWrapper)
-        return ResultResponse.success(null, ResponseCode.SUCCESS)
+    ): ResponseEntity<ResultVO<Long>> {
+        val memberId : Long = authService.signup(reqSignupWrapper)
+        return ResultResponse.success(memberId, ResponseCode.SUCCESS)
     }
 
     @Operation(summary = "이메일 인증", description = "이메일 인증 코드를 전송합니다.")
     @PostMapping("/email")
     fun email(@Valid @RequestBody emailDTO: ReqEmailDTO): ResponseEntity<ResultVO<String>> {
-        val code = authService.sendEmailCode(emailDTO);
+        val code : String = authService.sendEmailCode(emailDTO);
         return ResultResponse.success(code, ResponseCode.SUCCESS)
     }
 

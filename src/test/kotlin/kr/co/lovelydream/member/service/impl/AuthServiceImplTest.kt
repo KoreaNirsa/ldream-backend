@@ -183,16 +183,21 @@ class AuthServiceImplTest {
             gender = Gender.M,
             password = "encodedPwd"
         )
-        // TermsRepository stub: SERVICE는 정상, PRIVACY는 null로 설정
-        every { termsRepository.findTopByTypeOrderByVersionDesc(TermsType.SERVICE) } returns Terms(
-            termsId = 1L,
-            type = TermsType.SERVICE,
-            version = "v1",
-            content = "Sample content",
-            isRequired = true,
-            createdAt = LocalDateTime.now()
-        )
-        every { termsRepository.findTopByTypeOrderByVersionDesc(TermsType.PRIVACY) } returns null
+        
+        // PRIVACY는 null 반환 및 나머지는 정상 반환
+        TermsType.entries.forEach { type ->
+            val shouldReturnNull = (type == TermsType.PRIVACY)
+            every { termsRepository.findTopByTypeOrderByVersionDesc(type) } returns (
+                if (shouldReturnNull) null else Terms(
+                    termsId = 1L,
+                    type = type,
+                    version = "v1",
+                    content = "Sample content",
+                    isRequired = true,
+                    createdAt = LocalDateTime.now()
+                )
+            )
+        }
 
         val memberDto = ReqSignupMemberDTO(
             email = sampleEmail,
@@ -261,7 +266,7 @@ class AuthServiceImplTest {
         authService.signup(wrapper)
 
         // Then: 요청한 모든 TermsType 개수만큼 saveAll 호출 검증
-        val expectedCount = 4 // agreeTerms, agreePrivacy, agreeLocation, agreePaymentPolicy를 동의했으므로 4개
+        val expectedCount = 5 // agreeAge, agreeTerms, agreePrivacy, agreeLocation, agreePaymentPolicy를 동의했으므로 5개
         val slotList = slot<List<MemberTerms>>()
         verify { memberTermsRepository.saveAll(capture(slotList)) }
         assertEquals(expectedCount, slotList.captured.size)
@@ -275,6 +280,7 @@ class AuthServiceImplTest {
         every { redisTemplate.opsForValue().set(any(), any(), 5, TimeUnit.MINUTES) } just Runs
         val msgSlot = slot<SimpleMailMessage>()
         every { mailSender.send(capture(msgSlot)) } just Runs
+        every { memberRepository.findByEmail(sampleEmail) } returns null
 
         // When: 이메일 코드 전송 호출
         val code = authService.sendEmailCode(dto)
