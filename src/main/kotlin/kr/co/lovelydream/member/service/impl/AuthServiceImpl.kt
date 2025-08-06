@@ -6,11 +6,9 @@ import kr.co.lovelydream.global.exception.AuthException
 import kr.co.lovelydream.member.dto.ReqEmailDTO
 import kr.co.lovelydream.member.dto.ReqEmailVerifyDTO
 import kr.co.lovelydream.member.service.AuthService
-import kr.co.lovelydream.member.dto.ReqSignupMemberDTO
-import kr.co.lovelydream.member.dto.ReqSignupTermsDTO
 import kr.co.lovelydream.member.dto.ReqSignupWrapper
 import kr.co.lovelydream.member.entity.Terms
-import kr.co.lovelydream.member.entity.TermsType
+import kr.co.lovelydream.member.enums.TermsType
 import kr.co.lovelydream.member.repository.MemberRepository
 import kr.co.lovelydream.member.repository.MemberTermsRepository
 import kr.co.lovelydream.member.repository.TermsRepository
@@ -42,6 +40,7 @@ class AuthServiceImpl(
         if (memberRepository.findByEmail(requestMember.email) != null) {
             throw AuthException(ResponseCode.AUTH_EMAIL_ALREADY_EXISTS)
         }
+
         val encodedPassword = passwordEncoder.encode(requestMember.password)
         val member = requestMember.toMemberEntity(encodedPassword)
         val savedMember = memberRepository.save(member)

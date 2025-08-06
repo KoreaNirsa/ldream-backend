@@ -33,7 +33,6 @@ class AuthController(
     fun signup(
         @Valid @RequestBody reqSignupWrapper: ReqSignupWrapper
     ): ResponseEntity<ResultVO<Nothing>> {
-        println(reqSignupWrapper)
         authService.signup(reqSignupWrapper)
         return ResultResponse.success(null, ResponseCode.SUCCESS)
     }

@@ -2,16 +2,10 @@ package kr.co.lovelydream.member.dto
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.AssertTrue
-import jakarta.validation.constraints.Email
-import jakarta.validation.constraints.NotBlank
-import jakarta.validation.constraints.Pattern
-import kr.co.lovelydream.member.entity.Gender
 import kr.co.lovelydream.member.entity.Member
 import kr.co.lovelydream.member.entity.MemberTerms
 import kr.co.lovelydream.member.entity.Terms
-import kr.co.lovelydream.member.entity.TermsType
-import java.time.LocalDate
-
+import kr.co.lovelydream.member.enums.TermsType
 
 @Schema(description = "회원가입 요청 약관 동의 DTO")
 data class ReqSignupTermsDTO(
@@ -44,6 +38,7 @@ data class ReqSignupTermsDTO(
     fun toMemberTermsEntity(member: Member, termsMap: Map<TermsType, Terms>): List<MemberTerms> {
         val list = mutableListOf<MemberTerms>()
 
+        if (agreeAge) list.add(MemberTerms(member = member, terms = termsMap[TermsType.AGE]!!))
         if (agreeTerms) list.add(MemberTerms(member = member, terms = termsMap[TermsType.SERVICE]!!))
         if (agreePrivacy) list.add(MemberTerms(member = member, terms = termsMap[TermsType.PRIVACY]!!))
         if (agreeLocation) list.add(MemberTerms(member = member, terms = termsMap[TermsType.LOCATION]!!))
