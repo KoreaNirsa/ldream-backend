@@ -61,6 +61,10 @@ class AuthServiceImpl(
     }
 
     override fun sendEmailCode(emailDTO : ReqEmailDTO) : String {
+        if (memberRepository.findByEmail(emailDTO.email) != null) {
+            throw AuthException(ResponseCode.AUTH_EMAIL_ALREADY_EXISTS)
+        }
+
         val code = generateCode()
         sendEmail(emailDTO.email, code)
 

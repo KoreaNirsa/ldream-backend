@@ -8,31 +8,34 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import kr.co.lovelydream.member.enums.Gender
+import kr.co.lovelydream.member.enums.MemberStatus
 import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Entity
 @Table(name = "member")
 class Member(
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val memberId: Long? = null,
+    var memberId: Long? = null,
 
     @Column(nullable = false, length = 255)
-    val email: String,
+    var email: String = "",
 
     @Column(nullable = false, length = 50)
-    val name: String,
+    var name: String = "",
 
     @Column(nullable = false, length = 50)
-    val nickname: String,
+    var nickname: String = "",
 
     @Column(nullable = false)
-    val birthDate: LocalDate,
+    var birthDate: LocalDate = LocalDate.now(),
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 1)
-    val gender: Gender,
+    var gender: Gender = Gender.M,
 
     @Column(length = 255)
     var password: String? = null,
@@ -41,7 +44,7 @@ class Member(
     var mileage: Int = 0,
 
     @Column(nullable = false)
-    val createdAt: LocalDateTime = LocalDateTime.now(),
+    var createdAt: LocalDateTime = LocalDateTime.now(),
 
     var updatedAt: LocalDateTime? = null,
 
@@ -50,7 +53,9 @@ class Member(
     var status: MemberStatus = MemberStatus.ACTIVE,
 
     var deletedAt: LocalDateTime? = null
-)
-
-enum class Gender { M, F }
-enum class MemberStatus { ACTIVE, SUSPENDED, WITHDRAWN }
+) {
+    constructor() : this(
+        null, "", "", "", LocalDate.now(), Gender.M,
+        null, 0, LocalDateTime.now(), null, MemberStatus.ACTIVE, null
+    )
+}

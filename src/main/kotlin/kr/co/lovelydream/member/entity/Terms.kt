@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Lob
 import jakarta.persistence.Table
+import kr.co.lovelydream.member.enums.TermsType
 import java.time.LocalDateTime
 
 @Entity
@@ -42,8 +43,4 @@ class Terms(
         isRequired = false,
         createdAt = null
     )
-}
-
-enum class TermsType {
-    SERVICE, PRIVACY, LOCATION, PAYMENT, MARKETING, PERSONALIZATION
 }

@@ -15,6 +15,10 @@ import java.time.LocalDate
 
 @Schema(description = "회원가입 요청 약관 동의 DTO")
 data class ReqSignupTermsDTO(
+    @field:AssertTrue(message = "[필수] 14세 이상에 동의해야 합니다.")
+    @get:Schema(description = "[필수] 만 14세 이상입니다.", example = "true")
+    val agreeAge : Boolean,
+
     @field:AssertTrue(message = "[필수] 서비스 이용약관에 동의해야 합니다.")
     @get:Schema(description = "[필수] 서비스 이용약관 동의 여부", example = "true")
     val agreeTerms: Boolean,
