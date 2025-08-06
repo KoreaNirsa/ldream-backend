@@ -17,11 +17,11 @@ import kr.co.lovelydream.member.dto.ReqEmailVerifyDTO
 import kr.co.lovelydream.member.dto.ReqSignupMemberDTO
 import kr.co.lovelydream.member.dto.ReqSignupTermsDTO
 import kr.co.lovelydream.member.dto.ReqSignupWrapper
-import kr.co.lovelydream.member.entity.Gender
 import kr.co.lovelydream.member.entity.Member
 import kr.co.lovelydream.member.entity.MemberTerms
 import kr.co.lovelydream.member.entity.Terms
-import kr.co.lovelydream.member.entity.TermsType
+import kr.co.lovelydream.member.enums.Gender
+import kr.co.lovelydream.member.enums.TermsType
 import kr.co.lovelydream.member.repository.MemberRepository
 import kr.co.lovelydream.member.repository.MemberTermsRepository
 import kr.co.lovelydream.member.repository.TermsRepository
@@ -92,6 +92,7 @@ class AuthServiceImplTest {
             password = "Password123!"
         )
         val termsDto = ReqSignupTermsDTO(
+            agreeAge = true,
             agreeTerms = true,
             agreePrivacy = true,
             agreeLocation = true,
@@ -147,6 +148,7 @@ class AuthServiceImplTest {
             password = "Password123!"
         )
         val termsDto = ReqSignupTermsDTO(
+            agreeAge = true,
             agreeTerms = true,
             agreePrivacy = true,
             agreeLocation = true,
@@ -202,10 +204,7 @@ class AuthServiceImplTest {
             password = "Password123!"
         )
         val termsDto = ReqSignupTermsDTO(
-            agreeTerms = true,
-            agreePrivacy = true,
-            agreeLocation = true,
-            agreePaymentPolicy = true
+            agreeAge = true, agreeTerms = true, agreePrivacy = true, agreeLocation = true, agreePaymentPolicy = true
         )
         val wrapper = ReqSignupWrapper(memberDto, termsDto)
 
@@ -254,10 +253,7 @@ class AuthServiceImplTest {
             password = "Password123!"
         )
         val termsDto = ReqSignupTermsDTO(
-            agreeTerms = true,
-            agreePrivacy = true,
-            agreeLocation = true,
-            agreePaymentPolicy = true
+            agreeAge = true, agreeTerms = true, agreePrivacy = true, agreeLocation = true, agreePaymentPolicy = true
         )
         val wrapper = ReqSignupWrapper(memberDto, termsDto)
 

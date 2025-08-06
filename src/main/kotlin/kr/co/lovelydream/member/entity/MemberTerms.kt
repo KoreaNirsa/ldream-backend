@@ -23,7 +23,7 @@ class MemberTerms(
     val member: Member,
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "terms_id2", nullable = false)
+    @JoinColumn(name = "terms_id", nullable = false)
     val terms: Terms,
 
     @Column(nullable = false)
