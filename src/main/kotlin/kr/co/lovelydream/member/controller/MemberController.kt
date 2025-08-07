@@ -27,7 +27,7 @@ class MemberController(
     fun signup(
         @Valid @RequestBody reqSignupWrapper: ReqSignupWrapper
     ): ResponseEntity<ResultVO<Long>> {
-        val memberId : Long = authService.signup(reqSignupWrapper)
+        val memberId : Long = memberService.signup(reqSignupWrapper)
         return ResultResponse.success(memberId, ResponseCode.SUCCESS)
     }
 
