@@ -1,4 +1,4 @@
-package kr.co.lovelydream.member.dto
+package kr.co.lovelydream.auth.dto
 
 import io.swagger.v3.oas.annotations.media.Schema
 import jakarta.validation.constraints.Email

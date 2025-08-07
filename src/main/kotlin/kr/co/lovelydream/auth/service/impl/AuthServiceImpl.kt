@@ -1,20 +1,27 @@
-package kr.co.lovelydream.member.service.impl
+package kr.co.lovelydream.auth.service.impl
 
+import kr.co.lovelydream.auth.constants.EmailConstants.CODE_RANGE
+import kr.co.lovelydream.auth.constants.EmailConstants.EMAIL_BODY_TEMPLATE
+import kr.co.lovelydream.auth.constants.EmailConstants.EMAIL_SUBJECT
+import kr.co.lovelydream.auth.constants.EmailConstants.SENDER_EMAIL
+import kr.co.lovelydream.auth.dto.ReqEmailDTO
+import kr.co.lovelydream.auth.dto.ReqEmailVerifyDTO
+import kr.co.lovelydream.auth.dto.ReqLoginDTO
+import kr.co.lovelydream.auth.dto.TokenDTO
+import kr.co.lovelydream.auth.jwt.JwtTokenProvider
+import kr.co.lovelydream.auth.service.AuthService
+import kr.co.lovelydream.auth.service.RedisTokenService
 import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
-import kr.co.lovelydream.member.constants.AuthEmailConstants.CODE_RANGE
-import kr.co.lovelydream.member.constants.AuthEmailConstants.EMAIL_BODY_TEMPLATE
-import kr.co.lovelydream.member.constants.AuthEmailConstants.EMAIL_SUBJECT
-import kr.co.lovelydream.member.constants.AuthEmailConstants.SENDER_EMAIL
-import kr.co.lovelydream.member.dto.ReqEmailDTO
-import kr.co.lovelydream.member.dto.ReqEmailVerifyDTO
+import kr.co.lovelydream.global.exception.MemberException
 import kr.co.lovelydream.member.repository.MemberRepository
-import kr.co.lovelydream.member.service.AuthService
+import kr.co.lovelydream.member.service.impl.MemberServiceImpl
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
+import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.util.concurrent.TimeUnit
 
@@ -22,9 +29,58 @@ import java.util.concurrent.TimeUnit
 class AuthServiceImpl(
     private val memberRepository: MemberRepository,
     private val mailSender: JavaMailSender,
-    private val redisTemplate: StringRedisTemplate
+    private val redisTemplate: StringRedisTemplate,
+    private val passwordEncoder: PasswordEncoder,
+    private val jwtProvider: JwtTokenProvider,
+    private val redisTokenService: RedisTokenService
 ) : AuthService {
     private val logger: Logger = LogManager.getLogger(MemberServiceImpl::class.java)
+
+    override fun login(request: ReqLoginDTO): TokenDTO {
+        val member = memberRepository.findByEmail(request.email)
+            ?: throw MemberException(ResponseCode.MEMBER_NOT_FOUND)
+
+        if (!passwordEncoder.matches(request.password, member.password)) {
+            throw MemberException(ResponseCode.AUTH_INVALID_CREDENTIAL)
+        }
+
+        val accessToken  = jwtProvider.generateAccessToken(member.email)
+        val refreshToken = jwtProvider.generateRefreshToken(member.email)
+        val expiration   = jwtProvider.getExpiration(refreshToken)
+
+        redisTokenService.saveRefreshToken(member.email, refreshToken, expiration)
+
+        return TokenDTO(accessToken, refreshToken)
+    }
+
+    override fun reissue(refreshToken: String): TokenDTO {
+        if (!jwtProvider.isValid(refreshToken)) {
+            throw MemberException(ResponseCode.AUTH_UNAUTHORIZED)
+        }
+
+        val email = jwtProvider.getEmail(refreshToken)
+        val saved = redisTokenService.getRefreshToken(email)
+        if (saved == null || saved != refreshToken) {
+            throw MemberException(ResponseCode.AUTH_UNAUTHORIZED)
+        }
+
+        val newAccess = jwtProvider.generateAccessToken(email)
+        val newRefresh = jwtProvider.generateRefreshToken(email)
+
+        redisTokenService.saveRefreshToken(email, newRefresh, jwtProvider.getExpiration(newRefresh))
+
+        return TokenDTO(newAccess, newRefresh)
+    }
+
+    override fun logout(token: String) {
+        if (!jwtProvider.isValid(token)) return
+
+        val email = jwtProvider.getEmail(token)
+        redisTokenService.deleteRefreshToken(email)
+
+        val expiry = jwtProvider.getExpiration(token)
+        redisTokenService.blacklistAccessToken(token, expiry)
+    }
 
     override fun sendEmailCode(emailDTO: ReqEmailDTO): String {
         val email = emailDTO.email

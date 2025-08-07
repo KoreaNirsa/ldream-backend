@@ -7,13 +7,13 @@ import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
 import io.mockk.junit5.MockKExtension
 import io.mockk.just
-import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kr.co.lovelydream.auth.service.impl.AuthServiceImpl
 import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
-import kr.co.lovelydream.member.dto.ReqEmailDTO
-import kr.co.lovelydream.member.dto.ReqEmailVerifyDTO
+import kr.co.lovelydream.auth.dto.ReqEmailDTO
+import kr.co.lovelydream.auth.dto.ReqEmailVerifyDTO
 import kr.co.lovelydream.member.dto.ReqSignupMemberDTO
 import kr.co.lovelydream.member.dto.ReqSignupTermsDTO
 import kr.co.lovelydream.member.dto.ReqSignupWrapper
