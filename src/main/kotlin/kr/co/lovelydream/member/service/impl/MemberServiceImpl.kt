@@ -28,7 +28,7 @@ class MemberServiceImpl(
 ) : MemberService {
 
     @Transactional
-    override fun createProfile(reqCreateProfileDTO: ReqCreateProfileDTO): Long {
+    override fun createProfile(reqCreateProfileDTO: ReqCreateProfileDTO) {
         // 1. 기본 프로필 저장
         val profile = MemberProfile(
             memberId = reqCreateProfileDTO.memberId,
@@ -74,7 +74,5 @@ class MemberServiceImpl(
                 ProfileDateMood(dateMood = it, memberProfile = savedProfile)
             }
         )
-
-        return savedProfile.memberProfileId
     }
 }
