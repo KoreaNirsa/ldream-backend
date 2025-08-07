@@ -11,9 +11,6 @@ import kr.co.lovelydream.global.response.ResultResponse
 import kr.co.lovelydream.global.vo.ResultVO
 import kr.co.lovelydream.member.dto.ReqEmailDTO
 import kr.co.lovelydream.member.dto.ReqEmailVerifyDTO
-import kr.co.lovelydream.member.dto.ReqSignupMemberDTO
-import kr.co.lovelydream.member.dto.ReqSignupTermsDTO
-import kr.co.lovelydream.member.dto.ReqSignupWrapper
 import kr.co.lovelydream.member.service.AuthService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -23,20 +20,10 @@ import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Auth", description = "회원가입 및 로그인 API")
+@Tag(name = "Auth", description = "인증 관련 API")
 class AuthController(
     private val authService: AuthService
 ) {
-
-    @Operation(summary = "회원가입", description = "신규 유저를 등록합니다.")
-    @PostMapping("/signup")
-    fun signup(
-        @Valid @RequestBody reqSignupWrapper: ReqSignupWrapper
-    ): ResponseEntity<ResultVO<Long>> {
-        val memberId : Long = authService.signup(reqSignupWrapper)
-        return ResultResponse.success(memberId, ResponseCode.SUCCESS)
-    }
-
     @Operation(summary = "이메일 인증", description = "이메일 인증 코드를 전송합니다.")
     @PostMapping("/email")
     fun email(@Valid @RequestBody emailDTO: ReqEmailDTO): ResponseEntity<ResultVO<String>> {

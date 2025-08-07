@@ -7,6 +7,7 @@ import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.response.ResultResponse
 import kr.co.lovelydream.global.vo.ResultVO
 import kr.co.lovelydream.member.dto.ReqCreateProfileDTO
+import kr.co.lovelydream.member.dto.ReqSignupWrapper
 import kr.co.lovelydream.member.service.MemberService
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
@@ -20,6 +21,15 @@ import org.springframework.web.bind.annotation.RestController
 class MemberController(
     private val memberService: MemberService
 ) {
+
+    @Operation(summary = "회원가입", description = "신규 유저를 등록합니다.")
+    @PostMapping("/signup")
+    fun signup(
+        @Valid @RequestBody reqSignupWrapper: ReqSignupWrapper
+    ): ResponseEntity<ResultVO<Long>> {
+        val memberId : Long = authService.signup(reqSignupWrapper)
+        return ResultResponse.success(memberId, ResponseCode.SUCCESS)
+    }
 
     @Operation(summary = "프로필 신규 등록", description = "프로필 설정을 신규 등록합니다.")
     @PostMapping("/profile")
