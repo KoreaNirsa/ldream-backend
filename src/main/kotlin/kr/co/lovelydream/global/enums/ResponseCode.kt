@@ -16,5 +16,8 @@ enum class ResponseCode(val code: String, val message: String) {
     AUTH_EMAIL_SEND_FAILED("A006", "이메일 전송에 실패했습니다."),
 
     // 약관 관련 반환 코드
-    TERMS_NOT_FOUND("T001", "약관의 최신 버전을 찾을 수 없습니다.")
+    TERMS_NOT_FOUND("T001", "약관의 최신 버전을 찾을 수 없습니다."),
+
+    // 회원 관련 반환 코드
+    MEMBER_NOT_FOUND("M001", "존재하지 않는 회원입니다."),
 }
