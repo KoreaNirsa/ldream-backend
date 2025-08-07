@@ -6,6 +6,8 @@ import kr.co.lovelydream.member.dto.ReqEmailDTO
 import kr.co.lovelydream.member.dto.ReqEmailVerifyDTO
 import kr.co.lovelydream.member.repository.MemberRepository
 import kr.co.lovelydream.member.service.AuthService
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
@@ -18,21 +20,31 @@ class AuthServiceImpl(
     private val mailSender: JavaMailSender,
     private val redisTemplate: StringRedisTemplate
 ) : AuthService {
+    private val logger: Logger = LogManager.getLogger(MemberServiceImpl::class.java)
 
-    override fun sendEmailCode(emailDTO : ReqEmailDTO) : String {
-        if (memberRepository.findByEmail(emailDTO.email) != null) {
+    override fun sendEmailCode(emailDTO: ReqEmailDTO): String {
+        val email = emailDTO.email
+        logger.info("이메일 인증 요청: email={}", email)
+
+        if (memberRepository.findByEmail(email) != null) {
+            logger.warn("중복 이메일로 인증 요청: {}", email)
             throw AuthException(ResponseCode.AUTH_EMAIL_ALREADY_EXISTS)
         }
 
         val code = generateCode()
-        sendEmail(emailDTO.email, code)
+        logger.debug("생성된 인증 코드: {}", code)
+
+        sendEmail(email, code)
+        logger.info("인증 코드 이메일 발송 완료: email={}", email)
 
         redisTemplate.opsForValue().set(
-            "emailCode:${emailDTO.email}",
+            "emailCode:$email",
             code,
             5, TimeUnit.MINUTES
         )
-        return code;
+        logger.debug("Redis에 인증 코드 저장: key=emailCode:$email")
+
+        return code
     }
 
     override fun verifyEmailCode(emailVerifyDTO: ReqEmailVerifyDTO) {
@@ -50,16 +62,26 @@ class AuthServiceImpl(
     }
 
     private fun generateCode(): String {
-        return (100000..999999).random().toString()
+        val code = (100000..999999).random().toString()
+        logger.debug("랜덤 인증 코드 생성: {}", code)
+        return code
     }
 
     private fun sendEmail(to: String, code: String) {
+        logger.info("이메일 전송 시작: to={}", to)
         val message = SimpleMailMessage().apply {
-            setFrom("islandtim-project@naver.com")
+            from = "islandtim-project@naver.com"
             setTo(to)
             subject = "[LovelyDrme] 이메일 인증 코드"
             text = "요청하신 인증 코드는 [$code] 입니다.\n5분 내에 입력해주세요."
         }
-        mailSender.send(message)
+
+        try {
+            mailSender.send(message)
+            logger.info("이메일 전송 성공: to={}", to)
+        } catch (ex: Exception) {
+            logger.error("이메일 전송 실패: to={}, error={}", to, ex.message)
+            throw AuthException(ResponseCode.AUTH_EMAIL_SEND_FAILED)
+        }
     }
 }

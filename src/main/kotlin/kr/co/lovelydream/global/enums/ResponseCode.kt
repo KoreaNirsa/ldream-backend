@@ -13,6 +13,7 @@ enum class ResponseCode(val code: String, val message: String) {
     AUTH_INVALID_CREDENTIAL("A003", "이메일 또는 비밀번호가 일치하지 않습니다."),
     AUTH_EMAIL_ALREADY_EXISTS("A004", "이미 존재하는 이메일입니다."),
     AUTH_UNAUTHORIZED("A005", "인증되지 않은 사용자입니다."),
+    AUTH_EMAIL_SEND_FAILED("A006", "이메일 전송에 실패했습니다."),
 
     // 약관 관련 반환 코드
     TERMS_NOT_FOUND("T001", "약관의 최신 버전을 찾을 수 없습니다.")

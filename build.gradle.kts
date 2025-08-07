@@ -18,19 +18,27 @@ repositories {
     mavenCentral()
 }
 
+configurations.all {
+    exclude("ch.qos.logback", "logback-classic")
+    exclude("ch.qos.logback", "logback-core")
+
+    exclude("org.apache.logging.log4j", "log4j-to-slf4j")
+    exclude("org.slf4j", "slf4j-log4j12")
+    exclude("org.slf4j", "jul-to-slf4j")
+}
+
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springframework.boot:spring-boot-starter-mail:3.5.4")
     implementation("org.springframework.boot:spring-boot-starter-data-redis:3.5.4")
 
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
-
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("io.mockk:mockk:1.14.5")

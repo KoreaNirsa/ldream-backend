@@ -23,6 +23,8 @@ import kr.co.lovelydream.member.repository.ProfileInterestRepository
 import kr.co.lovelydream.member.repository.ProfileTransportationRepository
 import kr.co.lovelydream.member.repository.TermsRepository
 import kr.co.lovelydream.member.service.MemberService
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 
@@ -37,44 +39,60 @@ class MemberServiceImpl(
     private val profileFoodRepository: ProfileFoodRepository,
     private val profileDaysRepository: ProfileDaysRepository,
     private val profileTransportationRepository: ProfileTransportationRepository,
-    private val profileDateMoodRepository: ProfileDateMoodRepository
+    private val profileDateMoodRepository: ProfileDateMoodRepository,
 ) : MemberService {
+
+    private val logger: Logger = LogManager.getLogger(MemberServiceImpl::class.java)
 
     @Transactional
     override fun signup(
-        reqSignupWrapper : ReqSignupWrapper
-    ) : Long {
+        reqSignupWrapper: ReqSignupWrapper
+    ): Long {
         val requestMember = reqSignupWrapper.member
         val requestTerms = reqSignupWrapper.terms
 
-        // 회원 정보 저장
+        logger.info("회원가입 요청: email=${requestMember.email}")
+
+        // 중복 이메일 체크
         if (memberRepository.findByEmail(requestMember.email) != null) {
+            logger.warn("중복 이메일로 회원가입 시도: ${requestMember.email}")
             throw AuthException(ResponseCode.AUTH_EMAIL_ALREADY_EXISTS)
         }
 
+        // 비밀번호 암호화
         val encodedPassword = passwordEncoder.encode(requestMember.password)
         val member = requestMember.toMemberEntity(encodedPassword)
         val savedMember = memberRepository.save(member)
 
+        logger.info("회원 정보 저장 완료: memberId=${savedMember.memberId}")
+
         // 약관 동의 조회
         val latestTermsMap: Map<TermsType, Terms> = TermsType.entries.associateWith { type ->
             termsRepository.findTopByTypeOrderByVersionDesc(type)
-                ?: throw AuthException(ResponseCode.TERMS_NOT_FOUND)
+                ?: throw AuthException(ResponseCode.TERMS_NOT_FOUND).also {
+                    logger.error("약관 조회 실패: type=$type")
+                }
         }
 
+        // 약관 동의 엔티티 생성
         val memberTermsList = requestTerms.toMemberTermsEntity(savedMember, latestTermsMap)
 
         // 약관 동의 저장
         memberTermsRepository.saveAll(memberTermsList)
+
+        logger.info("약관 동의 저장 완료: size=${memberTermsList.size}")
 
         return savedMember.memberId!!
     }
 
     @Transactional
     override fun createProfile(reqCreateProfileDTO: ReqCreateProfileDTO) {
+        val memberId = reqCreateProfileDTO.memberId
+        logger.info("프로필 생성 요청 시작: memberId={}", memberId)
+
         // 1. 기본 프로필 저장
         val profile = MemberProfile(
-            memberId = reqCreateProfileDTO.memberId,
+            memberId = memberId,
             mbti = reqCreateProfileDTO.mbti,
             preferredRegion = reqCreateProfileDTO.preferredLocation,
             preferredTime = reqCreateProfileDTO.preferredTime,
@@ -82,40 +100,43 @@ class MemberServiceImpl(
             relationshipStatus = reqCreateProfileDTO.relationshipStatus
         )
         val savedProfile = memberProfileRepository.save(profile)
+        logger.info("기본 프로필 저장 완료: memberProfileId={}", savedProfile.memberProfileId)
 
-        // 2. 관심사
-        profileInterestRepository.saveAll(
-            reqCreateProfileDTO.interests.map {
-                ProfileInterest(category = it, memberProfile = savedProfile)
-            }
-        )
+        // 2. 관심사 저장
+        val interests = reqCreateProfileDTO.interests.map {
+            ProfileInterest(category = it, memberProfile = savedProfile)
+        }
+        profileInterestRepository.saveAll(interests)
+        logger.debug("관심사 저장 완료: count={}", interests.size)
 
-        // 3. 음식 취향
-        profileFoodRepository.saveAll(
-            reqCreateProfileDTO.foodPreferences.map {
-                ProfileFood(foodType = it, memberProfile = savedProfile)
-            }
-        )
+        // 3. 음식 취향 저장
+        val foods = reqCreateProfileDTO.foodPreferences.map {
+            ProfileFood(foodType = it, memberProfile = savedProfile)
+        }
+        profileFoodRepository.saveAll(foods)
+        logger.debug("음식 취향 저장 완료: count={}", foods.size)
 
-        // 4. 선호 요일
-        profileDaysRepository.saveAll(
-            reqCreateProfileDTO.preferredDays.map {
-                ProfileDays(preferredDays = it, memberProfile = savedProfile)
-            }
-        )
+        // 4. 선호 요일 저장
+        val days = reqCreateProfileDTO.preferredDays.map {
+            ProfileDays(preferredDays = it, memberProfile = savedProfile)
+        }
+        profileDaysRepository.saveAll(days)
+        logger.debug("선호 요일 저장 완료: count={}", days.size)
 
-        // 5. 교통 수단
-        profileTransportationRepository.saveAll(
-            reqCreateProfileDTO.transportation.map {
-                ProfileTransportation(transportation = it, memberProfile = savedProfile)
-            }
-        )
+        // 5. 교통 수단 저장
+        val transportations = reqCreateProfileDTO.transportation.map {
+            ProfileTransportation(transportation = it, memberProfile = savedProfile)
+        }
+        profileTransportationRepository.saveAll(transportations)
+        logger.debug("교통 수단 저장 완료: count={}", transportations.size)
 
-        // 6. 데이트 분위기
-        profileDateMoodRepository.saveAll(
-            reqCreateProfileDTO.dateMoods.map {
-                ProfileDateMood(dateMood = it, memberProfile = savedProfile)
-            }
-        )
+        // 6. 데이트 분위기 저장
+        val moods = reqCreateProfileDTO.dateMoods.map {
+            ProfileDateMood(dateMood = it, memberProfile = savedProfile)
+        }
+        profileDateMoodRepository.saveAll(moods)
+        logger.debug("데이트 분위기 저장 완료: count={}", moods.size)
+
+        logger.info("프로필 생성 완료: memberProfileId={}", savedProfile.memberProfileId)
     }
 }
