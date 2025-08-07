@@ -87,10 +87,8 @@ class AuthController(
         @CookieValue("refreshToken", required = false) refreshToken: String?,
         response: HttpServletResponse
     ): ResponseEntity<Void> {
-        // 1) 서버 측 블랙리스트에 refresh token 등록 (옵션)
         refreshToken?.let { authService.logout(it) }
 
-        // 2) 클라이언트 쿠키 삭제용 Set-Cookie 헤더
         val expiredCookie = ResponseCookie.from("refreshToken", "")
             .httpOnly(true)
             .secure(true)      // 배포 시 true

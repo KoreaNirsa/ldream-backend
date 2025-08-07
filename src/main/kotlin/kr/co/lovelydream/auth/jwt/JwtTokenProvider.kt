@@ -4,16 +4,18 @@ import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.io.Decoders
 import io.jsonwebtoken.security.Keys
-import kr.co.lovelydream.auth.constants.JwtConstants.SECRET
 import kr.co.lovelydream.auth.constants.JwtConstants.ACCESS_EXPIRATION_MS
 import kr.co.lovelydream.auth.constants.JwtConstants.REFRESH_EXPIRATION_MS
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 import java.util.*
 import javax.crypto.SecretKey
 
 @Component
-class JwtTokenProvider {
-    private val key: SecretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(SECRET))
+class JwtTokenProvider(
+    @Value("\${jwt.secret}") secret: String
+) {
+    private val key: SecretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret))
 
     fun generateAccessToken(email: String): String {
         val now = Date()
