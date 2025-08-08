@@ -25,7 +25,7 @@ class TokenStoreServiceImpl(
      * - Key: refresh:{userId}:{deviceId}
      * - TTL: refresh 만료까지 남은 시간
      */
-    override fun saveRefreshToken(userId: Long, deviceId: String, refreshJtiOrHash: String, expiredAt: Date) {
+    override fun saveRefreshToken(userId: String, deviceId: String, refreshJtiOrHash: String, expiredAt: Date) {
         val millisLeft = expiredAt.time - System.currentTimeMillis()
         if (millisLeft <= 0) {
             logger.warn(
@@ -58,7 +58,7 @@ class TokenStoreServiceImpl(
      * - Key: refresh:{userId}:{deviceId}
      * @return 저장된 값 또는 null
      */
-    override fun getRefreshToken(userId: Long, deviceId: String): String? {
+    override fun getRefreshToken(userId: String, deviceId: String): String? {
         val key = keyRefresh(userId, deviceId)
         return try {
             val value = redisTemplate.opsForValue().get(key)
@@ -77,7 +77,7 @@ class TokenStoreServiceImpl(
      * 저장된 리프레시 토큰 레코드를 삭제한다.
      * - Key: refresh:{userId}:{deviceId}
      */
-    override fun deleteRefreshToken(userId: Long, deviceId: String) {
+    override fun deleteRefreshToken(userId: String, deviceId: String) {
         val key = keyRefresh(userId, deviceId)
         try {
             val deleted = redisTemplate.delete(key)
@@ -177,6 +177,6 @@ class TokenStoreServiceImpl(
 
     // -------- private fun --------
 
-    private fun keyRefresh(userId: Long, deviceId: String) =
+    private fun keyRefresh(userId: String, deviceId: String) =
         "${REFRESH_PREFIX}${userId}:${deviceId}"
 }

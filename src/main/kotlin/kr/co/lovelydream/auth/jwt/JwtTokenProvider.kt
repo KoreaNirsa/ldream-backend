@@ -1,5 +1,6 @@
 package kr.co.lovelydream.auth.jwt
 
+import io.jsonwebtoken.Claims
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.io.Decoders
 import io.jsonwebtoken.security.Keys
@@ -16,14 +17,17 @@ class JwtTokenProvider(
 ) {
     private val key: SecretKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret))
 
-    fun generateAccessToken(email: String): String {
+    fun generateAccessToken(memberId: String): String {
         val now = Date()
         val expiry = Date(now.time + ACCESS_EXPIRATION_MS)
         val jti = UUID.randomUUID().toString()
 
         return Jwts.builder()
-            .subject(email)
+            .subject(memberId)
             .claim("typ", "access")
+            // 결제 후 추가 수정 필요
+            .claim("tier", "FREE")      // "FREE" | "PRO" | "PREMIUM"
+            .claim("auth", listOf("ROLE_USER")) // ["ROLE_USER", "ROLE_PRO"] 등
             .id(jti)
             .issuedAt(Date())
             .expiration(expiry)
@@ -31,14 +35,17 @@ class JwtTokenProvider(
             .compact()
     }
 
-    fun generateRefreshToken(email: String): String {
+    fun generateRefreshToken(memberId: String): String {
         val now = Date()
         val expiry = Date(now.time + REFRESH_EXPIRATION_MS)
         val jti = UUID.randomUUID().toString()
 
         return Jwts.builder()
-            .subject(email)
+            .subject(memberId)
             .claim("typ", "refresh")
+            // 결제 후 추가 수정 필요
+            .claim("tier", "FREE")      // "FREE" | "PRO" | "PREMIUM"
+            .claim("auth", listOf("ROLE_USER")) // ["ROLE_USER", "ROLE_PRO"] 등
             .id(jti)
             .issuedAt(Date())
             .expiration(expiry)
@@ -46,7 +53,7 @@ class JwtTokenProvider(
             .compact()
     }
 
-    fun getEmail(token: String): String =
+    fun getMemberId(token: String): String =
         Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload.subject
 
     fun getJti(token: String): String =
@@ -71,4 +78,28 @@ class JwtTokenProvider(
 
     fun getTyp(token: String): String =
         Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload.get("typ", String::class.java)
+
+    fun parseClaims(token: String): Claims =
+        Jwts.parser().verifyWith(key).build()
+            .parseSignedClaims(token).payload
+
+    fun getRoles(token: String): List<String> {
+        val claims = parseClaims(token)
+        val raw = claims["auth"] ?: return emptyList()
+        return when (raw) {
+            is List<*> -> raw.filterIsInstance<String>()
+            is String  -> raw.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            else       -> emptyList()
+        }
+    }
+
+    fun getTier(token: String): String {
+        val claims = parseClaims(token)
+        return (claims["tier"] as? String) ?: ""
+    }
+
+    fun getType(token: String): String {
+        val claims = parseClaims(token)
+        return (claims["tier"] as? String) ?: ""
+    }
 }

@@ -54,7 +54,7 @@ class AuthServiceImpl(
         val expiration = jwtService.getExpiration(refreshToken)
         val refreshJti = jwtService.getJti(refreshToken)
 
-        tokenStoreService.saveRefreshToken(member.memberId!!, deviceId, refreshJti, expiration)
+        tokenStoreService.saveRefreshToken(member.memberId!!.toString(), deviceId, refreshJti, expiration)
         logger.info(
             "로그인 완료 - 이메일={}, AccessToken길이={}, RefreshJTI={}",
             maskEmail(reqLoginDTO.email),
@@ -74,11 +74,10 @@ class AuthServiceImpl(
             throw AuthException(ResponseCode.AUTH_INVALID_REFRESH_TOKEN)
         }
 
-        val email = jwtService.getEmail(refreshToken)
-        val member = memberRepository.findByEmail(email) ?: throw AuthException(ResponseCode.MEMBER_NOT_FOUND)
+        val memberId = jwtService.getMemberId(refreshToken)
 
         val refreshJti = jwtService.getJti(refreshToken)
-        val savedJti = tokenStoreService.getRefreshToken(member.memberId!!, deviceId)
+        val savedJti = tokenStoreService.getRefreshToken(memberId, deviceId)
         if (savedJti == null || savedJti != refreshJti) {
             logger.warn("토큰 재발급 실패 - Redis 저장값 불일치")
             throw AuthException(ResponseCode.AUTH_INVALID_REFRESH_TOKEN)
@@ -89,14 +88,14 @@ class AuthServiceImpl(
             throw AuthException(ResponseCode.AUTH_REUSED_REFRESH_TOKEN)
         }
         // 회전
-        tokenStoreService.deleteRefreshToken(member.memberId!!, deviceId)
+        tokenStoreService.deleteRefreshToken(memberId, deviceId)
         tokenStoreService.markRefreshUsed(refreshJti, jwtService.getRemainingTtlSeconds(refreshToken))
 
-        val newAccess = jwtService.generateAccessToken(email)
-        val newRefresh = jwtService.generateRefreshToken(email)
+        val newAccess = jwtService.generateAccessToken(memberId)
+        val newRefresh = jwtService.generateRefreshToken(memberId)
         val newExp = jwtService.getExpiration(newRefresh)
         val newJti = jwtService.getJti(newRefresh)
-        tokenStoreService.saveRefreshToken(member.memberId!!, deviceId, newJti, newExp)
+        tokenStoreService.saveRefreshToken(memberId, deviceId, newJti, newExp)
         logger.info("토큰 재발급 완료 - 디바이스ID={}, 새로운RefreshJTI={}", deviceId.take(12), newJti.take(8))
 
         return TokenDTO(newAccess, newRefresh)
@@ -125,8 +124,7 @@ class AuthServiceImpl(
         refreshToken
             ?.takeIf { jwtService.isValid(it) && jwtService.getTyp(it) == "refresh" }
             ?.let { rt ->
-                val email = jwtService.getEmail(rt)
-                val memberId = memberRepository.findByEmail(email)?.memberId ?: return@let
+                val memberId = jwtService.getMemberId(rt)
 
                 val did = deviceId ?: error("deviceId must be provided by controller/filter")
                 tokenStoreService.deleteRefreshToken(memberId, did)

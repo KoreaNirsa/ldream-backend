@@ -3,9 +3,9 @@ package kr.co.lovelydream.auth.service
 import java.util.*
 
 interface TokenStoreService {
-    fun saveRefreshToken(userId: Long, deviceId: String, refreshJtiOrHash: String, expiredAt: Date)
-    fun getRefreshToken(userId: Long, deviceId: String): String?
-    fun deleteRefreshToken(userId: Long, deviceId: String)
+    fun saveRefreshToken(userId: String, deviceId: String, refreshJtiOrHash: String, expiredAt: Date)
+    fun getRefreshToken(userId: String, deviceId: String): String?
+    fun deleteRefreshToken(userId: String, deviceId: String)
 
     fun blacklistAccessJti(accessJti: String, ttlSeconds: Long)
     fun isAccessBlacklisted(accessJti: String): Boolean

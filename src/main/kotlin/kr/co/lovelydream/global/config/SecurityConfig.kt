@@ -38,6 +38,8 @@ class SecurityConfig (
                         "/swagger-ui/**",
                         "/v3/api-docs/**"
                     ).permitAll()
+                    // 유료 회원 추가 적용 예정
+                    // .requestMatchers("/api/premium/**").hasAnyRole("PRO", "PREMIUM")
                     .requestMatchers("/api/auth/logout").authenticated()
                     .anyRequest().authenticated()
             }
