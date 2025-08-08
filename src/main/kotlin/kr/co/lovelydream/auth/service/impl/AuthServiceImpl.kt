@@ -13,6 +13,7 @@ import kr.co.lovelydream.auth.service.AuthService
 import kr.co.lovelydream.auth.service.RedisTokenService
 import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
+import kr.co.lovelydream.global.util.LoggingUtil
 import kr.co.lovelydream.global.util.LoggingUtil.maskEmail
 import kr.co.lovelydream.member.repository.MemberRepository
 import kr.co.lovelydream.member.service.impl.MemberServiceImpl
@@ -135,12 +136,12 @@ class AuthServiceImpl(
         }
     }
 
-    override fun sendEmailCode(emailDTO: ReqEmailDTO): String {
+    override fun sendEmailCode(emailDTO: ReqEmailDTO) {
         val email = emailDTO.email
-        logger.info("이메일 인증 요청: email={}", email)
+        logger.info("이메일 인증 요청: email={}", LoggingUtil.maskEmail(email))
 
         if (memberRepository.findByEmail(email) != null) {
-            logger.warn("중복 이메일로 인증 요청: {}", email)
+            logger.warn("중복 이메일로 인증 요청: {}", LoggingUtil.maskEmail(email))
             throw AuthException(ResponseCode.AUTH_EMAIL_ALREADY_EXISTS)
         }
 
@@ -148,7 +149,7 @@ class AuthServiceImpl(
         logger.debug("생성된 인증 코드: {}", code)
 
         sendEmail(email, code)
-        logger.info("인증 코드 이메일 발송 완료: email={}", email)
+        logger.info("인증 코드 이메일 발송 완료: email={}", LoggingUtil.maskEmail(email))
 
         redisTemplate.opsForValue().set(
             "emailCode:$email",
@@ -156,8 +157,6 @@ class AuthServiceImpl(
             5, TimeUnit.MINUTES
         )
         logger.debug("Redis에 인증 코드 저장: key=emailCode:$email")
-
-        return code
     }
 
     override fun verifyEmailCode(emailVerifyDTO: ReqEmailVerifyDTO) {
@@ -188,7 +187,7 @@ class AuthServiceImpl(
     }
 
     private fun sendEmail(to: String, code: String) {
-        logger.info("이메일 전송 시작: to={}", to)
+        logger.info("이메일 전송 시작: to={}", LoggingUtil.maskEmail(to))
         val message = SimpleMailMessage().apply {
             from = SENDER_EMAIL
             setTo(to)

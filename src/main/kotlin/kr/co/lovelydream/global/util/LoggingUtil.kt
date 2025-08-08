@@ -6,9 +6,9 @@ object LoggingUtil {
      * 예: test@example.com -> t***@example.com
      */
     fun maskEmail(email: String): String {
-        return email.replace(Regex("(^.).*(@.*$)"), "$1***$2")
+        return email.replace(Regex("(^.).*(@.*$)"), "$1***$4")
     }
-
+d .
     /**
      * 이름 마스킹 (성만 남기고 * 처리)
      * 예: 김재섭 -> 김**

@@ -14,7 +14,7 @@ interface AuthService {
 
     fun blacklistAccessIfValid(at: String)
 
-    fun sendEmailCode(emailDTO : ReqEmailDTO) : String
+    fun sendEmailCode(emailDTO : ReqEmailDTO)
 
     fun verifyEmailCode(emailVerifyDTO: ReqEmailVerifyDTO)
 }

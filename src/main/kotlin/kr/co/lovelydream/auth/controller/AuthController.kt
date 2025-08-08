@@ -177,9 +177,9 @@ class AuthController(
 
     @Operation(summary = "이메일 인증", description = "이메일 인증 코드를 전송합니다.")
     @PostMapping("/email")
-    fun email(@Valid @RequestBody emailDTO: ReqEmailDTO): ResponseEntity<ResultVO<String>> {
-        val code: String = authService.sendEmailCode(emailDTO);
-        return ResultResponse.success(code, ResponseCode.SUCCESS)
+    fun email(@Valid @RequestBody emailDTO: ReqEmailDTO): ResponseEntity<ResultVO<Nothing>> {
+        authService.sendEmailCode(emailDTO);
+        return ResultResponse.success(null, ResponseCode.SUCCESS)
     }
 
     @Operation(
