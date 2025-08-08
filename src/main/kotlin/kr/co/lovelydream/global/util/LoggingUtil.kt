@@ -2,13 +2,20 @@ package kr.co.lovelydream.global.util
 
 object LoggingUtil {
     /**
-     * 이메일 앞 한 글자만 남기고 *** 처리
-     * 예: test@example.com -> t***@example.com
+     * 이메일 앞 4글자 + ***** + @도메인 형태로 마스킹
+     * 예: abcdef@example.com -> abcd*****@example.com
      */
     fun maskEmail(email: String): String {
-        return email.replace(Regex("(^.).*(@.*$)"), "$1***$4")
+        val parts = email.split("@")
+        if (parts.size != 2) return email // 형식이 아니면 그대로 반환
+
+        val namePart = parts[0]
+        val domainPart = parts[1]
+
+        val visible = if (namePart.length >= 4) namePart.substring(0, 4) else namePart
+        return "$visible*****@$domainPart"
     }
-d .
+
     /**
      * 이름 마스킹 (성만 남기고 * 처리)
      * 예: 김재섭 -> 김**
