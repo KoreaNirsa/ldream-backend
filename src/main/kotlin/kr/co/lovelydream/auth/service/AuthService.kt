@@ -6,11 +6,13 @@ import kr.co.lovelydream.auth.dto.ReqLoginDTO
 import kr.co.lovelydream.auth.dto.TokenDTO
 
 interface AuthService {
-    fun login(request: ReqLoginDTO): TokenDTO
+    fun login(reqLoginDTO: ReqLoginDTO, deviceId: String): TokenDTO
 
-    fun reissue(refreshToken: String): TokenDTO
+    fun reissue(refreshToken: String, deviceId : String): TokenDTO
 
-    fun logout(token: String)
+    fun logout(accessToken: String?, refreshToken: String?, deviceId : String?)
+
+    fun blacklistAccessIfValid(at: String)
 
     fun sendEmailCode(emailDTO : ReqEmailDTO) : String
 

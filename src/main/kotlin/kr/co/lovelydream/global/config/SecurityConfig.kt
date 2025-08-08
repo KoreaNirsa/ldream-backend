@@ -36,6 +36,7 @@ class SecurityConfig (
                         "/swagger-ui/**",
                         "/v3/api-docs/**"
                     ).permitAll()
+                    .requestMatchers("/api/auth/logout").authenticated()
                     .anyRequest().authenticated()
             }
             .addFilterBefore(

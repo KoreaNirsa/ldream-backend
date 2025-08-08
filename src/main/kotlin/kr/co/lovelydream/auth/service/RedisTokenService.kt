@@ -3,13 +3,14 @@ package kr.co.lovelydream.auth.service
 import java.util.*
 
 interface RedisTokenService {
-    fun saveRefreshToken(email: String, token: String, expiredAt: Date)
+    fun saveRefreshToken(userId: Long, deviceId: String, refreshJtiOrHash: String, expiredAt: Date)
+    fun getRefreshToken(userId: Long, deviceId: String): String?
+    fun deleteRefreshToken(userId: Long, deviceId: String): Boolean
 
-    fun getRefreshToken(email: String): String?
+    fun blacklistAccessJti(accessJti: String, ttlSeconds: Long)
+    fun isAccessBlacklisted(accessJti: String): Boolean
 
-    fun deleteRefreshToken(email: String): Boolean
-
-    fun blacklistAccessToken(token: String, expiredAt: Date)
-
-    fun isBlacklisted(token: String): Boolean
+    // (선택) 재사용 감지
+    fun markRefreshUsed(refreshJti: String, ttlSeconds: Long)
+    fun isRefreshUsed(refreshJti: String): Boolean
 }
