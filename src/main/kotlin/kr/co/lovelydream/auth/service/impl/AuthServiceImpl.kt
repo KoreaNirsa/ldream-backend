@@ -14,6 +14,7 @@ import kr.co.lovelydream.auth.service.RedisTokenService
 import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
 import kr.co.lovelydream.global.exception.MemberException
+import kr.co.lovelydream.global.util.LoggingUtil.maskEmail
 import kr.co.lovelydream.member.repository.MemberRepository
 import kr.co.lovelydream.member.service.impl.MemberServiceImpl
 import org.apache.logging.log4j.LogManager
@@ -23,8 +24,6 @@ import org.springframework.mail.SimpleMailMessage
 import org.springframework.mail.javamail.JavaMailSender
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
-import org.springframework.web.context.request.RequestContextHolder
-import org.springframework.web.context.request.ServletRequestAttributes
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
@@ -40,10 +39,13 @@ class AuthServiceImpl(
     private val logger: Logger = LogManager.getLogger(MemberServiceImpl::class.java)
 
     override fun login(reqLoginDTO: ReqLoginDTO, deviceId: String): TokenDTO {
+        logger.info("로그인 처리 시작 - 이메일={}, 디바이스ID={}", maskEmail(reqLoginDTO.email), deviceId.take(12))
+
         val member = memberRepository.findByEmail(reqLoginDTO.email)
             ?: throw MemberException(ResponseCode.MEMBER_NOT_FOUND)
 
         if (!passwordEncoder.matches(reqLoginDTO.password, member.password)) {
+            logger.warn("로그인 실패 - 비밀번호 불일치, 이메일={}", maskEmail(reqLoginDTO.email))
             throw MemberException(ResponseCode.AUTH_INVALID_CREDENTIAL)
         }
 
@@ -54,12 +56,19 @@ class AuthServiceImpl(
         val refreshJti = jwtProvider.getJti(refreshToken)
 
         redisTokenService.saveRefreshToken(member.memberId!!, deviceId, refreshJti, expiration)
+        logger.info("로그인 완료 - 이메일={}, AccessToken길이={}, RefreshJTI={}", maskEmail(reqLoginDTO.email), accessToken.length, refreshJti.take(8))
 
         return TokenDTO(accessToken, refreshToken)
     }
 
     override fun reissue(refreshToken: String, deviceId : String): TokenDTO {
-        if (!jwtProvider.isValid(refreshToken)) throw AuthException(ResponseCode.AUTH_INVALID_REFRESH_TOKEN)
+        logger.info("토큰 재발급 처리 시작 - 디바이스ID={}", deviceId.take(12))
+
+        if (!jwtProvider.isValid(refreshToken)) {
+            logger.warn("토큰 재발급 실패 - RefreshToken 유효하지 않음")
+
+            throw AuthException(ResponseCode.AUTH_INVALID_REFRESH_TOKEN)
+        }
 
         val email = jwtProvider.getEmail(refreshToken)
         val member = memberRepository.findByEmail(email) ?: throw MemberException(ResponseCode.MEMBER_NOT_FOUND)
@@ -67,11 +76,12 @@ class AuthServiceImpl(
         val refreshJti = jwtProvider.getJti(refreshToken)
         val savedJti = redisTokenService.getRefreshToken(member.memberId!!, deviceId)
         if (savedJti == null || savedJti != refreshJti) {
+            logger.warn("토큰 재발급 실패 - Redis 저장값 불일치")
             throw AuthException(ResponseCode.AUTH_INVALID_REFRESH_TOKEN)
         }
         // 재사용 감지(optional)
         if (redisTokenService.isRefreshUsed(refreshJti)) {
-            // 보호조치: 해당 유저의 모든 세션 제거 등
+            logger.warn("토큰 재발급 실패 - 이미 사용된 RefreshToken")
             throw AuthException(ResponseCode.AUTH_REUSED_REFRESH_TOKEN)
         }
         // 회전
@@ -83,21 +93,26 @@ class AuthServiceImpl(
         val newExp = jwtProvider.getExpiration(newRefresh)
         val newJti = jwtProvider.getJti(newRefresh)
         redisTokenService.saveRefreshToken(member.memberId!!, deviceId, newJti, newExp)
+        logger.info("토큰 재발급 완료 - 디바이스ID={}, 새로운RefreshJTI={}", deviceId.take(12), newJti.take(8))
 
         return TokenDTO(newAccess, newRefresh)
     }
 
     override fun logout(accessToken: String?, refreshToken: String?, deviceId : String?) {
-        // (1) Access 블랙리스트 (유효하고 typ=access)
+        logger.info("로그아웃 처리 시작 - AccessToken여부={}, RefreshToken여부={}, 디바이스ID={}", accessToken != null, refreshToken != null, deviceId?.take(12))
+
+        // Access 블랙리스트 (유효하고 typ=access)
         accessToken
             ?.takeIf { jwtProvider.isValid(it) && jwtProvider.getTyp(it) == "access" }
             ?.let {
                 val jti = jwtProvider.getJti(it)
                 val ttl = jwtProvider.getRemainingTtlSeconds(it)
                 if (ttl > 0) redisTokenService.blacklistAccessJti(jti, ttl)
+                logger.info("AccessToken 블랙리스트 등록 - JTI={}", jti.take(8))
+
             }
 
-        // (2) Refresh 폐기 + 재사용 마킹 (유효하고 typ=refresh)
+        //  Refresh 폐기 + 재사용 마킹 (유효하고 typ=refresh)
         refreshToken
             ?.takeIf { jwtProvider.isValid(it) && jwtProvider.getTyp(it) == "refresh" }
             ?.let { rt ->
@@ -110,7 +125,9 @@ class AuthServiceImpl(
                     jwtProvider.getJti(rt),
                     jwtProvider.getRemainingTtlSeconds(rt)
                 )
+                logger.info("RefreshToken 폐기 및 재사용 방지 처리 완료 - JTI={}", jwtProvider.getJti(rt).take(8))
             }
+        logger.info("로그아웃 처리 완료")
     }
 
     override fun blacklistAccessIfValid(at: String) {
@@ -165,27 +182,6 @@ class AuthServiceImpl(
     }
 
     // ---------- private fun ----------
-
-    private fun resolveDeviceId(): String {
-        val requestAttributes = RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes
-            ?: return "unknown-device"
-
-        val request = requestAttributes.request
-        val headerDeviceId = request.getHeader("X-Device-Id")
-
-        // 클라이언트가 직접 보낸 deviceId 사용
-        if (!headerDeviceId.isNullOrBlank()) {
-            return headerDeviceId.trim()
-        }
-
-        // 없으면 User-Agent + IP로 해시 생성
-        val userAgent = request.getHeader("User-Agent") ?: "unknown-ua"
-        val ip = request.remoteAddr ?: "unknown-ip"
-
-        val raw = "$userAgent|$ip"
-        return sha256(raw).take(16)
-    }
-
     private fun sha256(input: String): String {
         val digest = MessageDigest.getInstance("SHA-256")
         val hashBytes = digest.digest(input.toByteArray(Charsets.UTF_8))
