@@ -16,7 +16,6 @@ import kr.co.lovelydream.global.exception.AuthException
 import kr.co.lovelydream.global.util.LoggingUtil
 import kr.co.lovelydream.global.util.LoggingUtil.maskEmail
 import kr.co.lovelydream.member.repository.MemberRepository
-import kr.co.lovelydream.member.service.impl.MemberServiceImpl
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.springframework.data.redis.core.StringRedisTemplate
@@ -36,7 +35,7 @@ class AuthServiceImpl(
     private val jwtProvider: JwtTokenProvider,
     private val redisTokenService: RedisTokenService
 ) : AuthService {
-    private val logger: Logger = LogManager.getLogger(MemberServiceImpl::class.java)
+    private val logger: Logger = LogManager.getLogger(AuthServiceImpl::class.java)
 
     override fun login(reqLoginDTO: ReqLoginDTO, deviceId: String): TokenDTO {
         logger.info("로그인 처리 시작 - 이메일={}, 디바이스ID={}", maskEmail(reqLoginDTO.email), deviceId.take(12))
