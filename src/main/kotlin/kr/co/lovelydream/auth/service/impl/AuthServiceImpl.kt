@@ -13,7 +13,6 @@ import kr.co.lovelydream.auth.service.AuthService
 import kr.co.lovelydream.auth.service.RedisTokenService
 import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
-import kr.co.lovelydream.global.exception.MemberException
 import kr.co.lovelydream.global.util.LoggingUtil.maskEmail
 import kr.co.lovelydream.member.repository.MemberRepository
 import kr.co.lovelydream.member.service.impl.MemberServiceImpl
@@ -42,11 +41,11 @@ class AuthServiceImpl(
         logger.info("로그인 처리 시작 - 이메일={}, 디바이스ID={}", maskEmail(reqLoginDTO.email), deviceId.take(12))
 
         val member = memberRepository.findByEmail(reqLoginDTO.email)
-            ?: throw MemberException(ResponseCode.MEMBER_NOT_FOUND)
+            ?: throw AuthException(ResponseCode.MEMBER_NOT_FOUND)
 
         if (!passwordEncoder.matches(reqLoginDTO.password, member.password)) {
             logger.warn("로그인 실패 - 비밀번호 불일치, 이메일={}", maskEmail(reqLoginDTO.email))
-            throw MemberException(ResponseCode.AUTH_INVALID_CREDENTIAL)
+            throw AuthException(ResponseCode.AUTH_INVALID_CREDENTIAL)
         }
 
         val accessToken = jwtProvider.generateAccessToken(member.email)
@@ -71,7 +70,7 @@ class AuthServiceImpl(
         }
 
         val email = jwtProvider.getEmail(refreshToken)
-        val member = memberRepository.findByEmail(email) ?: throw MemberException(ResponseCode.MEMBER_NOT_FOUND)
+        val member = memberRepository.findByEmail(email) ?: throw AuthException(ResponseCode.MEMBER_NOT_FOUND)
 
         val refreshJti = jwtProvider.getJti(refreshToken)
         val savedJti = redisTokenService.getRefreshToken(member.memberId!!, deviceId)
