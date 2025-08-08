@@ -2,7 +2,7 @@ package kr.co.lovelydream.global.config
 
 import kr.co.lovelydream.auth.filter.JwtAuthenticationFilter
 import kr.co.lovelydream.auth.jwt.JwtTokenProvider
-import kr.co.lovelydream.auth.service.RedisTokenService
+import kr.co.lovelydream.auth.service.TokenStoreService
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -20,7 +20,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource
 @EnableWebSecurity
 class SecurityConfig (
     private val jwtProvider: JwtTokenProvider,
-    private val redisTokenService: RedisTokenService
+    private val redisTokenService: TokenStoreService
 ) {
     @Bean
     fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {

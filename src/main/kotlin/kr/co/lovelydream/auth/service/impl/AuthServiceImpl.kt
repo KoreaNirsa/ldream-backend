@@ -8,9 +8,9 @@ import kr.co.lovelydream.auth.dto.ReqEmailDTO
 import kr.co.lovelydream.auth.dto.ReqEmailVerifyDTO
 import kr.co.lovelydream.auth.dto.ReqLoginDTO
 import kr.co.lovelydream.auth.dto.TokenDTO
-import kr.co.lovelydream.auth.jwt.JwtTokenProvider
 import kr.co.lovelydream.auth.service.AuthService
-import kr.co.lovelydream.auth.service.RedisTokenService
+import kr.co.lovelydream.auth.service.JwtService
+import kr.co.lovelydream.auth.service.TokenStoreService
 import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
 import kr.co.lovelydream.global.util.LoggingUtil
@@ -32,8 +32,8 @@ class AuthServiceImpl(
     private val mailSender: JavaMailSender,
     private val redisTemplate: StringRedisTemplate,
     private val passwordEncoder: PasswordEncoder,
-    private val jwtProvider: JwtTokenProvider,
-    private val redisTokenService: RedisTokenService
+    private val jwtService: JwtService,
+    private val tokenStoreService: TokenStoreService
 ) : AuthService {
     private val logger: Logger = LogManager.getLogger(AuthServiceImpl::class.java)
 
@@ -48,90 +48,132 @@ class AuthServiceImpl(
             throw AuthException(ResponseCode.AUTH_INVALID_CREDENTIAL)
         }
 
-        val accessToken = jwtProvider.generateAccessToken(member.email)
-        val refreshToken = jwtProvider.generateRefreshToken(member.email)
+        val accessToken = jwtService.generateAccessToken(member.email)
+        val refreshToken = jwtService.generateRefreshToken(member.email)
 
-        val expiration = jwtProvider.getExpiration(refreshToken)
-        val refreshJti = jwtProvider.getJti(refreshToken)
+        val expiration = jwtService.getExpiration(refreshToken)
+        val refreshJti = jwtService.getJti(refreshToken)
 
-        redisTokenService.saveRefreshToken(member.memberId!!, deviceId, refreshJti, expiration)
-        logger.info("로그인 완료 - 이메일={}, AccessToken길이={}, RefreshJTI={}", maskEmail(reqLoginDTO.email), accessToken.length, refreshJti.take(8))
+        tokenStoreService.saveRefreshToken(member.memberId!!, deviceId, refreshJti, expiration)
+        logger.info(
+            "로그인 완료 - 이메일={}, AccessToken길이={}, RefreshJTI={}",
+            maskEmail(reqLoginDTO.email),
+            accessToken.length,
+            refreshJti.take(8)
+        )
 
         return TokenDTO(accessToken, refreshToken)
     }
 
-    override fun reissue(refreshToken: String, deviceId : String): TokenDTO {
+    override fun reissue(refreshToken: String, deviceId: String): TokenDTO {
         logger.info("토큰 재발급 처리 시작 - 디바이스ID={}", deviceId.take(12))
 
-        if (!jwtProvider.isValid(refreshToken)) {
+        if (!jwtService.isValid(refreshToken)) {
             logger.warn("토큰 재발급 실패 - RefreshToken 유효하지 않음")
 
             throw AuthException(ResponseCode.AUTH_INVALID_REFRESH_TOKEN)
         }
 
-        val email = jwtProvider.getEmail(refreshToken)
+        val email = jwtService.getEmail(refreshToken)
         val member = memberRepository.findByEmail(email) ?: throw AuthException(ResponseCode.MEMBER_NOT_FOUND)
 
-        val refreshJti = jwtProvider.getJti(refreshToken)
-        val savedJti = redisTokenService.getRefreshToken(member.memberId!!, deviceId)
+        val refreshJti = jwtService.getJti(refreshToken)
+        val savedJti = tokenStoreService.getRefreshToken(member.memberId!!, deviceId)
         if (savedJti == null || savedJti != refreshJti) {
             logger.warn("토큰 재발급 실패 - Redis 저장값 불일치")
             throw AuthException(ResponseCode.AUTH_INVALID_REFRESH_TOKEN)
         }
         // 재사용 감지(optional)
-        if (redisTokenService.isRefreshUsed(refreshJti)) {
+        if (tokenStoreService.isRefreshUsed(refreshJti)) {
             logger.warn("토큰 재발급 실패 - 이미 사용된 RefreshToken")
             throw AuthException(ResponseCode.AUTH_REUSED_REFRESH_TOKEN)
         }
         // 회전
-        redisTokenService.deleteRefreshToken(member.memberId!!, deviceId)
-        redisTokenService.markRefreshUsed(refreshJti, jwtProvider.getRemainingTtlSeconds(refreshToken))
+        tokenStoreService.deleteRefreshToken(member.memberId!!, deviceId)
+        tokenStoreService.markRefreshUsed(refreshJti, jwtService.getRemainingTtlSeconds(refreshToken))
 
-        val newAccess = jwtProvider.generateAccessToken(email)
-        val newRefresh = jwtProvider.generateRefreshToken(email)
-        val newExp = jwtProvider.getExpiration(newRefresh)
-        val newJti = jwtProvider.getJti(newRefresh)
-        redisTokenService.saveRefreshToken(member.memberId!!, deviceId, newJti, newExp)
+        val newAccess = jwtService.generateAccessToken(email)
+        val newRefresh = jwtService.generateRefreshToken(email)
+        val newExp = jwtService.getExpiration(newRefresh)
+        val newJti = jwtService.getJti(newRefresh)
+        tokenStoreService.saveRefreshToken(member.memberId!!, deviceId, newJti, newExp)
         logger.info("토큰 재발급 완료 - 디바이스ID={}, 새로운RefreshJTI={}", deviceId.take(12), newJti.take(8))
 
         return TokenDTO(newAccess, newRefresh)
     }
 
-    override fun logout(accessToken: String?, refreshToken: String?, deviceId : String?) {
-        logger.info("로그아웃 처리 시작 - AccessToken여부={}, RefreshToken여부={}, 디바이스ID={}", accessToken != null, refreshToken != null, deviceId?.take(12))
+    override fun logout(accessToken: String?, refreshToken: String?, deviceId: String?) {
+        logger.info(
+            "로그아웃 처리 시작 - AccessToken여부={}, RefreshToken여부={}, 디바이스ID={}",
+            accessToken != null,
+            refreshToken != null,
+            deviceId?.take(12)
+        )
 
         // Access 블랙리스트 (유효하고 typ=access)
         accessToken
-            ?.takeIf { jwtProvider.isValid(it) && jwtProvider.getTyp(it) == "access" }
+            ?.takeIf { jwtService.isValid(it) && jwtService.getTyp(it) == "access" }
             ?.let {
-                val jti = jwtProvider.getJti(it)
-                val ttl = jwtProvider.getRemainingTtlSeconds(it)
-                if (ttl > 0) redisTokenService.blacklistAccessJti(jti, ttl)
+                val jti = jwtService.getJti(it)
+                val ttl = jwtService.getRemainingTtlSeconds(it)
+                if (ttl > 0) tokenStoreService.blacklistAccessJti(jti, ttl)
                 logger.info("AccessToken 블랙리스트 등록 - JTI={}", jti.take(8))
 
             }
 
         //  Refresh 폐기 + 재사용 마킹 (유효하고 typ=refresh)
         refreshToken
-            ?.takeIf { jwtProvider.isValid(it) && jwtProvider.getTyp(it) == "refresh" }
+            ?.takeIf { jwtService.isValid(it) && jwtService.getTyp(it) == "refresh" }
             ?.let { rt ->
-                val email = jwtProvider.getEmail(rt)
+                val email = jwtService.getEmail(rt)
                 val memberId = memberRepository.findByEmail(email)?.memberId ?: return@let
 
                 val did = deviceId ?: error("deviceId must be provided by controller/filter")
-                redisTokenService.deleteRefreshToken(memberId, did)
-                redisTokenService.markRefreshUsed(
-                    jwtProvider.getJti(rt),
-                    jwtProvider.getRemainingTtlSeconds(rt)
+                tokenStoreService.deleteRefreshToken(memberId, did)
+                tokenStoreService.markRefreshUsed(
+                    jwtService.getJti(rt),
+                    jwtService.getRemainingTtlSeconds(rt)
                 )
-                logger.info("RefreshToken 폐기 및 재사용 방지 처리 완료 - JTI={}", jwtProvider.getJti(rt).take(8))
+                logger.info("RefreshToken 폐기 및 재사용 방지 처리 완료 - JTI={}", jwtService.getJti(rt).take(8))
             }
         logger.info("로그아웃 처리 완료")
     }
 
+    /**
+     * 전달된 액세스 토큰이 유효하면 JTI를 추출하여 블랙리스트에 등록한다.
+     * - 유효하지 않거나 TTL이 0 이하이면 동작하지 않음
+     */
     override fun blacklistAccessIfValid(at: String) {
-        if (jwtProvider.isValid(at)) {
-            redisTokenService.blacklistAccessJti(jwtProvider.getJti(at), jwtProvider.getRemainingTtlSeconds(at))
+        try {
+            if (!jwtService.isValid(at)) {
+                logger.warn("Access 블랙리스트 스킵 - 토큰이 유효하지 않음")
+                return
+            }
+            val typ = jwtService.getTyp(at)
+            if (typ != "access") {
+                logger.warn("Access 블랙리스트 스킵 - typ이 access가 아님 | typ={}", typ)
+                return
+            }
+
+            val jti = jwtService.getJti(at)
+            val ttl = jwtService.getRemainingTtlSeconds(at)
+            if (ttl <= 0) {
+                logger.warn("Access 블랙리스트 스킵 - TTL <= 0 | jti={}, ttlSec={}", LoggingUtil.maskJti(jti), ttl)
+                return
+            }
+
+            tokenStoreService.blacklistAccessJti(jti, ttl)
+            logger.info("Access 블랙리스트 등록 완료 | jti={}, ttlSec={}", LoggingUtil.maskJti(jti), ttl)
+
+        } catch (ex: org.springframework.data.redis.RedisConnectionFailureException) {
+            logger.error("Access 블랙리스트 등록 실패(연결 실패) | 원인={}", ex.message)
+            throw ex
+        } catch (ex: org.springframework.dao.DataAccessException) {
+            logger.error("Access 블랙리스트 등록 실패(데이터 접근) | 원인={}", ex.message)
+            throw ex
+        } catch (ex: Exception) {
+            logger.error("Access 블랙리스트 등록 실패(알 수 없는 오류) | 원인={}", ex.message)
+            throw ex
         }
     }
 

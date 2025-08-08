@@ -31,4 +31,20 @@ object LoggingUtil {
     fun maskPhone(phone: String): String {
         return phone.replace(Regex("(\\d{3})-(\\d{4})-(\\d{4})"), "$1-****-$3")
     }
+
+    /**
+     * JTI 마스킹
+     * - 앞 4글자 + *** + 뒤 4글자
+     */
+    fun maskJti(jti: String): String =
+        if (jti.length <= 8) jti.take(2) + "***"
+        else jti.take(4) + "***" + jti.takeLast(4)
+
+    /**
+     * 디바이스 ID 마스킹
+     * - 앞 4글자 + ***
+     */
+    fun maskDevice(deviceId: String): String =
+        if (deviceId.length <= 6) deviceId.take(2) + "***"
+        else deviceId.take(4) + "***"
 }

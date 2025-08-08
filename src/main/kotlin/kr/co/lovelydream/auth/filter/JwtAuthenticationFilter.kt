@@ -5,7 +5,7 @@ import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import kr.co.lovelydream.auth.jwt.JwtTokenProvider
-import kr.co.lovelydream.auth.service.RedisTokenService
+import kr.co.lovelydream.auth.service.TokenStoreService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -17,7 +17,7 @@ import java.io.IOException
 
 class JwtAuthenticationFilter(
     private val jwtProvider: JwtTokenProvider,
-    private val redisTokenService: RedisTokenService
+    private val redisTokenService: TokenStoreService
 ) : OncePerRequestFilter() {
     private val pathMatcher = AntPathMatcher()
 
