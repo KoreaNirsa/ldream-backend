@@ -4,7 +4,7 @@ import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
-import kr.co.lovelydream.auth.jwt.JwtTokenProvider
+import kr.co.lovelydream.auth.service.JwtService
 import kr.co.lovelydream.auth.service.TokenStoreService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -16,8 +16,8 @@ import org.springframework.web.filter.OncePerRequestFilter
 import java.io.IOException
 
 class JwtAuthenticationFilter(
-    private val jwtProvider: JwtTokenProvider,
-    private val redisTokenService: TokenStoreService
+    private val jwtService: JwtService,
+    private val tokenStoreService: TokenStoreService
 ) : OncePerRequestFilter() {
     private val pathMatcher = AntPathMatcher()
 
@@ -58,31 +58,31 @@ class JwtAuthenticationFilter(
             filterChain.doFilter(request, response)
             return
         }
-        
+
         // typ 확인
-        if (jwtProvider.getTyp(token) != "access") {
+        if (jwtService.getTyp(token) != "access") {
             writeUnauthorized(response, "ACCESS_TOKEN_TYP_MISMATCH"); return
         }
-        
+
         // 유효성 확인(서명/만료)
-        if (!jwtProvider.isValid(token)) {
+        if (!jwtService.isValid(token)) {
             writeUnauthorized(response, "INVALID_OR_EXPIRED_ACCESS_TOKEN")
             return
         }
 
         // 블랙리스트(JTI) 확인
-        val jti = runCatching { jwtProvider.getJti(token) }.getOrNull()
+        val jti = runCatching { jwtService.getJti(token) }.getOrNull()
         if (jti.isNullOrBlank()) {
             writeUnauthorized(response, "ACCESS_TOKEN_JTI_MISSING")
             return
         }
-        if (redisTokenService.isAccessBlacklisted(jti)) {
+        if (tokenStoreService.isAccessBlacklisted(jti)) {
             writeUnauthorized(response, "ACCESS_TOKEN_BLACKLISTED")
             return
         }
 
         // 인증 컨텍스트 설정
-        val email = runCatching { jwtProvider.getEmail(token) }.getOrNull()
+        val email = runCatching { jwtService.getEmail(token) }.getOrNull()
         if (email.isNullOrBlank()) {
             writeUnauthorized(response, "ACCESS_TOKEN_SUBJECT_MISSING")
             return

@@ -28,8 +28,10 @@ class TokenStoreServiceImpl(
     override fun saveRefreshToken(userId: Long, deviceId: String, refreshJtiOrHash: String, expiredAt: Date) {
         val millisLeft = expiredAt.time - System.currentTimeMillis()
         if (millisLeft <= 0) {
-            logger.warn("리프레시 토큰 저장 건너뜀 - 만료 시간이 이미 지남 | userId={}, deviceId={}, ttlMs={}",
-                userId, LoggingUtil.maskDevice(deviceId), millisLeft)
+            logger.warn(
+                "리프레시 토큰 저장 건너뜀 - 만료 시간이 이미 지남 | userId={}, deviceId={}, ttlMs={}",
+                userId, LoggingUtil.maskDevice(deviceId), millisLeft
+            )
             return
         }
 
@@ -38,8 +40,10 @@ class TokenStoreServiceImpl(
 
         try {
             redisTemplate.opsForValue().set(key, refreshJtiOrHash, ttl)
-            logger.info("리프레시 토큰 저장 완료 | key={}, jti={}, ttlSec={}",
-                key, maskJti(refreshJtiOrHash), ttl.seconds)
+            logger.info(
+                "리프레시 토큰 저장 완료 | key={}, jti={}, ttlSec={}",
+                key, maskJti(refreshJtiOrHash), ttl.seconds
+            )
         } catch (ex: RedisConnectionFailureException) {
             logger.error("리프레시 토큰 저장 실패(연결 실패) | key={}, 원인={}", key, ex.message)
             throw ex

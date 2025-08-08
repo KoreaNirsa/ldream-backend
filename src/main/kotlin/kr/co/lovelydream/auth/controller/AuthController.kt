@@ -52,8 +52,10 @@ class AuthController(
             content = [Content(schema = Schema(implementation = ReqLoginDTO::class))]
         ),
         responses = [
-            ApiResponse(responseCode = "200", description = "성공",
-                content = [Content(schema = Schema(implementation = ResAccessTokenDTO::class))]),
+            ApiResponse(
+                responseCode = "200", description = "성공",
+                content = [Content(schema = Schema(implementation = ResAccessTokenDTO::class))]
+            ),
             ApiResponse(responseCode = "401", description = "자격 증명 실패"),
             ApiResponse(responseCode = "404", description = "사용자 없음")
         ]
@@ -78,8 +80,11 @@ class AuthController(
             .build()
 
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-        logger.info("로그인 성공 - 이메일={}, AccessToken길이={}, RefreshToken 쿠키 설정 완료", LoggingUtil.maskEmail(reqLoginDTO.email), token.accessToken.length)
-
+        logger.info(
+            "로그인 성공 - 이메일={}, AccessToken길이={}, RefreshToken 쿠키 설정 완료",
+            LoggingUtil.maskEmail(reqLoginDTO.email),
+            token.accessToken.length
+        )
 
         return ResponseEntity.ok(
             ResAccessTokenDTO(
@@ -101,8 +106,10 @@ class AuthController(
             )
         ],
         responses = [
-            ApiResponse(responseCode = "200", description = "성공",
-                content = [Content(schema = Schema(implementation = ResAccessTokenDTO::class))]),
+            ApiResponse(
+                responseCode = "200", description = "성공",
+                content = [Content(schema = Schema(implementation = ResAccessTokenDTO::class))]
+            ),
             ApiResponse(responseCode = "401", description = "Refresh 무효/만료/재사용"),
             ApiResponse(responseCode = "404", description = "사용자 없음")
         ]
@@ -126,7 +133,11 @@ class AuthController(
             .maxAge(Duration.ofDays(7))
             .build()
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString())
-        logger.info("토큰 재발급 성공 - 디바이스ID={}, AccessToken길이={}, RefreshToken 회전 완료", deviceId.take(12), token.accessToken.length)
+        logger.info(
+            "토큰 재발급 성공 - 디바이스ID={}, AccessToken길이={}, RefreshToken 회전 완료",
+            deviceId.take(12),
+            token.accessToken.length
+        )
 
         return ResponseEntity.ok(
             ResAccessTokenDTO(
@@ -141,8 +152,18 @@ class AuthController(
         description = "Access는 블랙리스트로, Refresh는 삭제 및 재사용 방지로 처리한다.",
         security = [SecurityRequirement(name = "bearerAuth")],
         parameters = [
-            Parameter(name = HttpHeaders.AUTHORIZATION, `in` = ParameterIn.HEADER, required = false, description = "Bearer 액세스 토큰"),
-            Parameter(name = "refreshToken", `in` = ParameterIn.COOKIE, required = false, description = "HttpOnly Refresh 쿠키")
+            Parameter(
+                name = HttpHeaders.AUTHORIZATION,
+                `in` = ParameterIn.HEADER,
+                required = false,
+                description = "Bearer 액세스 토큰"
+            ),
+            Parameter(
+                name = "refreshToken",
+                `in` = ParameterIn.COOKIE,
+                required = false,
+                description = "HttpOnly Refresh 쿠키"
+            )
         ],
         responses = [
             ApiResponse(responseCode = "200", description = "성공"),
@@ -158,17 +179,17 @@ class AuthController(
     ): ResponseEntity<Void> {
         val accessToken = extractBearerToken(authz)
         val deviceId = resolveDeviceId(request)
-        logger.info("로그아웃 요청 시작 - AccessToken여부={}, RefreshToken여부={}, 디바이스ID={}", accessToken != null, refreshToken != null, deviceId.take(12))
+        logger.info(
+            "로그아웃 요청 시작 - AccessToken여부={}, RefreshToken여부={}, 디바이스ID={}",
+            accessToken != null,
+            refreshToken != null,
+            deviceId.take(12)
+        )
 
         authService.logout(accessToken, refreshToken, deviceId)
         // refresh 쿠키 삭제
         val expired = ResponseCookie.from("refreshToken", "")
-            .httpOnly(true).
-            secure(false).
-            path("/").
-            sameSite("Strict").
-            maxAge(0).
-            build()
+            .httpOnly(true).secure(false).path("/").sameSite("Strict").maxAge(0).build()
         response.addHeader(HttpHeaders.SET_COOKIE, expired.toString())
         logger.info("로그아웃 성공 - AccessToken블랙리스트={}, RefreshToken폐기여부={}", accessToken != null, refreshToken != null)
 
