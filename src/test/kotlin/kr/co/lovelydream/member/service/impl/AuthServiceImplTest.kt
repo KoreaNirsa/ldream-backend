@@ -18,6 +18,7 @@ import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
 import kr.co.lovelydream.member.repository.MemberRepository
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
@@ -31,6 +32,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @ExtendWith(MockKExtension::class)
+@DisplayName("이메일 인증 - AuthServiceImpl")
 class AuthServiceImplTest {
     @MockK lateinit var memberRepository: MemberRepository
     @MockK lateinit var mailSender: JavaMailSender
@@ -51,6 +53,7 @@ class AuthServiceImplTest {
 
     // 이메일 인증 코드 전송 시 메일 발송과 Redis TTL 저장을 검증하는 테스트
     @Test
+    @DisplayName("성공: 이메일 코드 전송 → 메일 발송 & Redis TTL 저장")
     fun sendEmailCode_sendsEmailAndStoresTTL() {
         // Given: Redis 저장과 메일 전송 stub
         val dto = ReqEmailDTO(sampleEmail)
@@ -76,6 +79,7 @@ class AuthServiceImplTest {
 
     // 인증 코드가 없을 때 만료 예외(AuthException)가 발생하는지 검증하는 테스트
     @Test
+    @DisplayName("실패: 코드 없음 → AUTH_CODE_EXPIRED")
     fun verifyEmailCode_whenNoCode_throwsExpiredException() {
         // Given: Redis에 키 없음
         val dto = ReqEmailVerifyDTO(sampleEmail, "123456")
@@ -88,6 +92,7 @@ class AuthServiceImplTest {
 
     // 인증 코드 불일치 시 불일치 예외(AuthException)가 발생하는지 검증하는 테스트
     @Test
+    @DisplayName("실패: 코드 불일치 → AUTH_CODE_MISMATCH")
     fun verifyEmailCode_whenMismatch_throwsMismatchException() {
         // Given: Redis에 다른 코드 저장
         val dto = ReqEmailVerifyDTO(sampleEmail, "123456")
@@ -100,6 +105,7 @@ class AuthServiceImplTest {
 
     // 인증 코드 일치 시 Redis 키가 삭제되는지 검증하는 테스트
     @Test
+    @DisplayName("성공: 코드 일치 → Redis 키 삭제")
     fun verifyEmailCode_whenMatch_deletesKey() {
         // Given: Redis에 일치 코드 저장
         val dto = ReqEmailVerifyDTO(sampleEmail, "123456")
