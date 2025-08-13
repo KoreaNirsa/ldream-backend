@@ -15,6 +15,7 @@ import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.AuthException
 import kr.co.lovelydream.global.util.LoggingUtil
 import kr.co.lovelydream.global.util.LoggingUtil.maskEmail
+import kr.co.lovelydream.member.enums.MemberStatus
 import kr.co.lovelydream.member.repository.MemberRepository
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -46,6 +47,18 @@ class AuthServiceImpl(
         if (!passwordEncoder.matches(reqLoginDTO.password, member.password)) {
             logger.warn("로그인 실패 - 비밀번호 불일치, 이메일={}", maskEmail(reqLoginDTO.email))
             throw AuthException(ResponseCode.AUTH_INVALID_CREDENTIAL)
+        }
+
+        val blockedStatuses = setOf(
+            MemberStatus.SUSPENDED,
+            MemberStatus.DELETED
+        )
+        if (member.status in blockedStatuses) {
+            logger.warn(
+                "로그인 실패 - 비활성/탈퇴 상태, 이메일={}, 상태={}",
+                maskEmail(reqLoginDTO.email), member.status
+            )
+            throw AuthException(ResponseCode.AUTH_UNAUTHORIZED)
         }
 
         val accessToken = jwtService.generateAccessToken(member.email)
