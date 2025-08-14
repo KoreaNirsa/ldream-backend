@@ -10,6 +10,8 @@ import kr.co.lovelydream.member.dto.ReqCreateProfileDTO
 import kr.co.lovelydream.member.dto.ReqSignupWrapper
 import kr.co.lovelydream.member.service.MemberService
 import org.springframework.http.ResponseEntity
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
@@ -37,6 +39,13 @@ class MemberController(
         @Valid @RequestBody reqCreateProfileDTO: ReqCreateProfileDTO
     ): ResponseEntity<ResultVO<Nothing>> {
         memberService.createProfile(reqCreateProfileDTO)
+        return ResultResponse.success(null, ResponseCode.SUCCESS)
+    }
+
+    @Operation(summary = "초기 데이터 정보 조회", description = "로그인 후 필요한 데이터를 조회합니다.")
+    @GetMapping("/{memberId}")
+    fun selectMemberData(@PathVariable memberId: Long): ResponseEntity<ResultVO<Nothing>>{
+        System.out.println("ok")
         return ResultResponse.success(null, ResponseCode.SUCCESS)
     }
 
