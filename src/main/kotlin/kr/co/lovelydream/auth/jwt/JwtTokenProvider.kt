@@ -100,6 +100,6 @@ class JwtTokenProvider(
 
     fun getType(token: String): String {
         val claims = parseClaims(token)
-        return (claims["tier"] as? String) ?: ""
+        return (claims["typ"] as? String) ?: ""
     }
 }

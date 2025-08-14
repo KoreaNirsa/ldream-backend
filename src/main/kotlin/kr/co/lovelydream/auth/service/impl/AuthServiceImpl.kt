@@ -61,13 +61,13 @@ class AuthServiceImpl(
             throw AuthException(ResponseCode.AUTH_UNAUTHORIZED)
         }
 
-        val accessToken = jwtService.generateAccessToken(member.email)
-        val refreshToken = jwtService.generateRefreshToken(member.email)
+        val accessToken = jwtService.generateAccessToken(member.memberId.toString())
+        val refreshToken = jwtService.generateRefreshToken(member.memberId.toString())
 
         val expiration = jwtService.getExpiration(refreshToken)
         val refreshJti = jwtService.getJti(refreshToken)
 
-        tokenStoreService.saveRefreshToken(member.memberId!!.toString(), deviceId, refreshJti, expiration)
+        tokenStoreService.saveRefreshToken(member.memberId.toString(), deviceId, refreshJti, expiration)
         logger.info(
             "로그인 완료 - 이메일={}, AccessToken길이={}, RefreshJTI={}",
             maskEmail(reqLoginDTO.email),
