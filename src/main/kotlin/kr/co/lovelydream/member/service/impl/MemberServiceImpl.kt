@@ -5,6 +5,7 @@ import kr.co.lovelydream.global.enums.ResponseCode
 import kr.co.lovelydream.global.exception.MemberException
 import kr.co.lovelydream.member.dto.ReqCreateProfileDTO
 import kr.co.lovelydream.member.dto.ReqSignupWrapper
+import kr.co.lovelydream.member.dto.ResInitDataDTO
 import kr.co.lovelydream.member.entity.MemberProfile
 import kr.co.lovelydream.member.entity.ProfileDateMood
 import kr.co.lovelydream.member.entity.ProfileDays
@@ -12,8 +13,10 @@ import kr.co.lovelydream.member.entity.ProfileFood
 import kr.co.lovelydream.member.entity.ProfileInterest
 import kr.co.lovelydream.member.entity.ProfileTransportation
 import kr.co.lovelydream.member.entity.Terms
+import kr.co.lovelydream.member.enums.RelationStatus
 import kr.co.lovelydream.member.enums.TermsType
 import kr.co.lovelydream.member.repository.MemberProfileRepository
+import kr.co.lovelydream.member.repository.MemberRelationRepository
 import kr.co.lovelydream.member.repository.MemberRepository
 import kr.co.lovelydream.member.repository.MemberTermsRepository
 import kr.co.lovelydream.member.repository.ProfileDateMoodRepository
@@ -40,6 +43,7 @@ class MemberServiceImpl(
     private val profileDaysRepository: ProfileDaysRepository,
     private val profileTransportationRepository: ProfileTransportationRepository,
     private val profileDateMoodRepository: ProfileDateMoodRepository,
+    private val memberRelationRepository: MemberRelationRepository,
 ) : MemberService {
 
     private val logger: Logger = LogManager.getLogger(MemberServiceImpl::class.java)
@@ -144,5 +148,36 @@ class MemberServiceImpl(
         logger.debug("데이트 분위기 저장 완료: count={}", moods.size)
 
         logger.info("프로필 생성 완료: memberProfileId={}", savedProfile.memberProfileId)
+    }
+
+    override fun selectMemberData(memberId: Long): ResInitDataDTO {
+        val member = memberRepository.findById(memberId)
+            .orElseThrow { MemberException(ResponseCode.MEMBER_NOT_FOUND) }
+
+        // 최신 ACTIVE 관계 1건 조회
+        val relation = memberRelationRepository
+            .findLatestActiveRelation(
+                RelationStatus.ACTIVE, memberId
+            )
+
+        // relation 이 있으면 상대방(memberId가 아닌 쪽)의 닉네임 추출
+        val partnerNickname: String? = relation?.let {
+            val fromId = it.fromMember.memberId
+            val toId = it.toMember.memberId
+            when (memberId) {
+                fromId -> it.toMember.nickname
+                toId   -> it.fromMember.nickname
+                else   -> null
+            }
+        }
+
+        return ResInitDataDTO(
+            myNickname = member.nickname,
+            mileage = member.mileage ?: 0,
+            partnerNickname = partnerNickname,
+            tier = "Free",            // TODO: 결제/구독 도메인 정리 후 반영
+            memoryCount = 0,     // TODO: 추억(피드/앨범 등) 도메인 반영 후 count
+            aiRecommendation = 0 // TODO: 추천 결과/상태 반영
+        )
     }
 }
